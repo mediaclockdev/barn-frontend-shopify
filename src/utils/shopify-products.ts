@@ -232,9 +232,12 @@ export async function fetchShopifyProducts(
     if (params?.stock_status === "instock") queryFragments.push(`available_for_sale:true`);
     else if (params?.stock_status === "outofstock") queryFragments.push(`-available_for_sale:true`);
     if (params?.on_sale === "true") queryFragments.push(`is_price_reduced:true`);
-    // Note: To filter by collection properly in GraphQL, one often queries the collection node instead.
-    // For simplicity, if we have category handles, we might not map them here unless we use tags.
-    // If you need collection filtering, you'd adjust the GraphQL to node(id: $collectionId) { ... }
+    if (params?.category) {
+      const tags = params.category.split(",").map(tag => `tag:"${tag.trim()}"`);
+      if (tags.length > 0) {
+        queryFragments.push(`(${tags.join(" OR ")})`);
+      }
+    }
     
     const query = queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
 
@@ -324,6 +327,22 @@ const getCollectionsQuery = `
           id
           handle
           title
+          metafield(namespace: "custom", key: "sidebar_filters") {
+            value
+            references(first: 50) {
+              edges {
+                node {
+                  ... on Metaobject {
+                    id
+                    fields {
+                      key
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -340,25 +359,42 @@ export async function fetchShopifyCategories() {
       return [];
     }
 
-    const collections = body.data.collections.edges.map(({ node }: any) => ({
-      id: node.id,
-      title: node.title,
-      handle: node.handle,
-    }));
+    const categories = body.data.collections.edges.map(({ node }: any) => {
+      let filters = [];
+      if (node.metafield?.references?.edges) {
+        filters = node.metafield.references.edges.map((refEdge: any) => {
+          const fields = refEdge.node.fields;
+          const labelField = fields.find((f: any) => f.key === "label")?.value;
+          const tagsFieldRaw = fields.find((f: any) => f.key === "tags")?.value;
+          
+          let parsedTags: string[] = [];
+          try {
+            parsedTags = JSON.parse(tagsFieldRaw || "[]");
+          } catch (e) {
+            // fallback if it's not valid json string array
+            parsedTags = tagsFieldRaw ? tagsFieldRaw.split(",").map((t: string) => t.trim()) : [];
+          }
 
-    // Map to the expected UI structure for CategoryFilter
-    return [
-      {
-        category: "Collections",
-        title: "Collections",
-        filters: collections.map((c: any) => ({
-          id: c.id,
-          title: c.title,
-          handle: c.handle,
-          items: [], // For deeper sub-categories if needed
-        })),
-      },
-    ];
+          return {
+            id: refEdge.node.id, // Metaobject ID
+            title: labelField,
+            // The frontend expands category group IDs into tags using items array
+            items: parsedTags.map(tag => ({ id: tag, name: tag })),
+          };
+        });
+      }
+
+      return {
+        category: node.title,
+        title: node.title,
+        slug: node.handle,
+        filters: filters
+      };
+    });
+
+    // Return the mapped collections as top-level categories, excluding Shopify system defaults
+    const excludedTitles = ["home page", "automated collection", "hydrogen"];
+    return categories.filter((c: any) => !excludedTitles.includes(c.title.toLowerCase()));
   } catch (error) {
     console.error("Failed to fetch shopify categories", error);
     return [];
