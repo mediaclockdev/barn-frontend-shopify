@@ -232,6 +232,7 @@ export async function fetchShopifyProducts(
     if (params?.stock_status === "instock") queryFragments.push(`available_for_sale:true`);
     else if (params?.stock_status === "outofstock") queryFragments.push(`-available_for_sale:true`);
     if (params?.on_sale === "true") queryFragments.push(`is_price_reduced:true`);
+    else if (params?.on_sale === "false") queryFragments.push(`-is_price_reduced:true`);
     if (params?.category) {
       const tags = params.category.split(",").map(tag => `tag:"${tag.trim()}"`);
       if (tags.length > 0) {

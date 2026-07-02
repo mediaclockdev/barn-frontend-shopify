@@ -21,7 +21,7 @@ export async function generateMetadata() {
 }
 
 export default async function Page() {
-  const res: any = await fetchShopifyProducts({ per_page: "6" }).catch((error) => {
+  const res: any = await fetchShopifyProducts({ per_page: "6", on_sale: "true" }).catch((error) => {
     console.error("Failed to fetch Home products: ", error);
     return { products: [] };
   });
