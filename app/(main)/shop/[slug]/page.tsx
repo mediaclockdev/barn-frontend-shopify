@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { fetchShopifyProduct } from "@/src/utils/shopify-products";
+import { fetchShopifyProduct, fetchCustomSimilarProducts } from "@/src/utils/shopify-products";
 import { constructMetadata } from "@/src/utils/seo";
 import SingleProductClient from "@/src/components/shop/SingleProductClient";
 import { cache } from "react";
@@ -40,8 +40,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const page = async ({ params }: Props) => {
   const { slug } = await params;
   const product = await getProduct(slug);
+  
+  let recommendations = [];
+  if (product) {
+    recommendations = await fetchCustomSimilarProducts(product).catch(() => []);
+  }
 
-  return <SingleProductClient serverProduct={product} slug={slug} />;
+  return <SingleProductClient serverProduct={product} serverRelatedProducts={recommendations} slug={slug} />;
 };
 
 export default page;

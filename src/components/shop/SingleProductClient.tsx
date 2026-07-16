@@ -5,9 +5,11 @@ import { useProductStore } from "@/src/store/productStore";
 
 const SingleProductClient = ({
   serverProduct,
+  serverRelatedProducts = [],
   slug,
 }: {
   serverProduct?: any;
+  serverRelatedProducts?: any[];
   slug: string;
 }) => {
   const storeProduct = useProductStore((state) => state.selectedProduct);
@@ -58,7 +60,7 @@ const SingleProductClient = ({
         type={isVariable ? "variable" : "simple"}
         attributes={product.options}
         variations={product.variants}
-        relatedIds={[]}
+        relatedProducts={serverRelatedProducts}
         manageStock={true}
         stockQuantity={product.totalInventory}
         stockStatus={product.availableForSale ? "instock" : "outofstock"}

@@ -36,6 +36,7 @@ interface ProductLayoutProps {
   variations?: any[];
   stockStatus?: string;
   relatedIds?: number[];
+  relatedProducts?: any[];
   manageStock?: boolean;
   stockQuantity?: number | null;
   slug?: string;
@@ -55,6 +56,7 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
   variations = [],
   stockStatus = "instock",
   relatedIds = [],
+  relatedProducts = [],
   manageStock = false,
   stockQuantity = null,
   slug = "",
@@ -67,7 +69,6 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
     Record<string, string>
   >({});
   const [currentVariation, setCurrentVariation] = useState<any>(null);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,25 +81,7 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
   );
   const inCart = inCartItem?.quantity || 0;
 
-
-  useEffect(() => {
-    if (relatedIds && relatedIds.length > 0) {
-      const fetchRelated = async () => {
-        try {
-          const res = await fetch(
-            `/api/products/by-ids?ids=${relatedIds.join(",")}`,
-          );
-          if (res.ok) {
-            const data = await res.json();
-            setRelatedProducts(data.products || []);
-          }
-        } catch (error) {
-          console.error("Failed to fetch related products", error);
-        }
-      };
-      fetchRelated();
-    }
-  }, [relatedIds]);
+  // [REMOVED WOOCOMMERCE CLIENT FETCH]: Related products are now passed down fully resolved from the server via Shopify's Recommendations API
 
   const displayPrice = currentVariation
     ? parseFloat(

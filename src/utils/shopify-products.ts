@@ -634,3 +634,83 @@ export async function fetchShopifyRecommendations(productId: string): Promise<Sh
     return [];
   }
 }
+
+export async function fetchCustomSimilarProducts(product: ShopifyProduct): Promise<ShopifyProduct[]> {
+  try {
+    let queryFragments = [];
+    
+    // 1. Try matching by the first tag
+    if (product.tags && product.tags.length > 0) {
+      queryFragments.push(`tag:"${product.tags[0]}"`);
+    } 
+    // 2. Fallback to matching by the first collection if no tags exist
+    // Note: To truly filter by collection in the general query, we might need to rely on the collection ID if the backend supports it, 
+    // or just return generic products if all else fails. For this storefront, let's use the productType if no tags exist.
+    else if (product.productType && product.productType !== "simple" && product.productType !== "") {
+      queryFragments.push(`product_type:"${product.productType}"`);
+    }
+
+    const query = queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
+
+    // We fetch a few extra in case the current product is in the results
+    const res = await shopifyFetch<any>({
+      query: getProductsQuery,
+      variables: { first: 6, query },
+    });
+
+    if (!res.body.data?.products?.edges) {
+      return [];
+    }
+
+    const products = res.body.data.products.edges.map(({ node }: any) => ({
+      id: node.id,
+      handle: node.handle,
+      title: node.title,
+      descriptionHtml: node.descriptionHtml,
+      description: node.description,
+      tags: node.tags || [],
+      productType: node.productType || "simple",
+      availableForSale: node.availableForSale,
+      totalInventory: node.totalInventory ?? 0,
+      priceRange: node.priceRange || {
+        minVariantPrice: { amount: "0", currencyCode: "AUD" },
+        maxVariantPrice: { amount: "0", currencyCode: "AUD" },
+      },
+      compareAtPriceRange: node.compareAtPriceRange || undefined,
+      options: node.options?.map((opt: any) => ({
+        name: opt.name,
+        values: opt.values,
+      })) || [],
+      variants: node.variants?.edges?.map(({ node: v }: any) => ({
+        id: v.id,
+        title: v.title,
+        sku: v.sku || null,
+        availableForSale: v.availableForSale,
+        quantityAvailable: v.quantityAvailable ?? 0,
+        price: v.price,
+        compareAtPrice: v.compareAtPrice,
+        image: v.image || null,
+        weight: v.weight || null,
+        weightUnit: v.weightUnit || null,
+        selectedOptions: v.selectedOptions || [],
+      })) || [],
+      images: node.images?.edges?.map(({ node: img }: any) => ({
+        id: img.id,
+        url: img.url,
+        altText: img.altText || null,
+      })) || [],
+      collections: node.collections?.edges?.map(({ node: c }: any) => ({
+        id: c.id,
+        title: c.title,
+        handle: c.handle,
+      })) || [],
+    }));
+
+    // Filter out the current product and return exactly 4 related products
+    return products.filter((p: ShopifyProduct) => p.id !== product.id).slice(0, 4);
+    
+  } catch (error) {
+    console.error("Error fetching custom similar products:", error);
+    return [];
+  }
+}
