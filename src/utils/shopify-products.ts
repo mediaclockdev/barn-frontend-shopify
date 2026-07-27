@@ -76,7 +76,9 @@ const getProductQuery = `
   }
 `;
 
-export async function fetchShopifyProduct(handle: string): Promise<ShopifyProduct | null> {
+export async function fetchShopifyProduct(
+  handle: string,
+): Promise<ShopifyProduct | null> {
   try {
     const { body } = await shopifyFetch<any>({
       query: getProductQuery,
@@ -101,47 +103,55 @@ export async function fetchShopifyProduct(handle: string): Promise<ShopifyProduc
       totalInventory: p.totalInventory ?? 0,
       priceRange: p.priceRange,
       compareAtPriceRange: p.compareAtPriceRange,
-      options: p.options?.map((opt: any) => ({
-        name: opt.name,
-        values: opt.values,
-      })) || [],
-      variants: p.variants?.edges?.map(({ node: v }: any) => ({
-        id: v.id,
-        title: v.title,
-        sku: v.sku || null,
-        availableForSale: v.availableForSale,
-        quantityAvailable: v.quantityAvailable ?? 0,
-        price: v.price,
-        compareAtPrice: v.compareAtPrice,
-        image: v.image || null,
-        weight: v.weight || null,
-        weightUnit: v.weightUnit || null,
-        selectedOptions: v.selectedOptions || [],
-      })) || [],
-      images: p.images?.edges?.map(({ node: img }: any) => ({
-        id: img.id,
-        url: img.url,
-        altText: img.altText || null,
-      })) || [],
-      collections: p.collections?.edges?.map(({ node: c }: any) => ({
-        id: c.id,
-        title: c.title,
-        handle: c.handle,
-      })) || [],
+      options:
+        p.options?.map((opt: any) => ({
+          name: opt.name,
+          values: opt.values,
+        })) || [],
+      variants:
+        p.variants?.edges?.map(({ node: v }: any) => ({
+          id: v.id,
+          title: v.title,
+          sku: v.sku || null,
+          availableForSale: v.availableForSale,
+          quantityAvailable: v.quantityAvailable ?? 0,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          image: v.image || null,
+          weight: v.weight || null,
+          weightUnit: v.weightUnit || null,
+          selectedOptions: v.selectedOptions || [],
+        })) || [],
+      images:
+        p.images?.edges?.map(({ node: img }: any) => ({
+          id: img.id,
+          url: img.url,
+          altText: img.altText || null,
+        })) || [],
+      collections:
+        p.collections?.edges?.map(({ node: c }: any) => ({
+          id: c.id,
+          title: c.title,
+          handle: c.handle,
+        })) || [],
     };
 
     return mappedProduct;
   } catch (error) {
-    console.error(`Failed to fetch shopify product with handle: ${handle}`, error);
+    console.error(
+      `Failed to fetch shopify product with handle: ${handle}`,
+      error,
+    );
     return null;
   }
 }
 
 const getProductsQuery = `
-  query getProducts($first: Int!, $query: String) {
-    products(first: $first, query: $query) {
+  query getProducts($first: Int!, $query: String, $after: String, $sortKey: ProductSortKeys, $reverse: Boolean) {
+    products(first: $first, query: $query, after: $after, sortKey: $sortKey, reverse: $reverse) {
       pageInfo {
         hasNextPage
+        endCursor
       }
       edges {
         node {
@@ -215,49 +225,62 @@ export async function fetchShopifyProducts(
   params?: Record<string, string>,
 ): Promise<{
   products: ShopifyProduct[];
-  totalPages: number;
-  totalItems: number;
+  hasNextPage: boolean;
+  endCursor: string | null;
 }> {
   try {
-    const page = parseInt(params?.page || "1", 10);
-    const perPage = parseInt(params?.per_page || "12", 10);
-    
-    // Simplistic pagination: fetch enough to cover the requested page, then slice.
-    // A robust Shopify implementation would use cursors instead.
-    const first = page * perPage;
-    
+    const firstShopify = parseInt(params?.per_page || "12", 10);
+    const after = params?.cursor || null;
+
     // Basic search/filter mapping
     let queryFragments = [];
     if (params?.search) queryFragments.push(`title:*${params.search}*`);
-    if (params?.stock_status === "instock") queryFragments.push(`available_for_sale:true`);
-    else if (params?.stock_status === "outofstock") queryFragments.push(`-available_for_sale:true`);
-    if (params?.on_sale === "true") queryFragments.push(`is_price_reduced:true`);
-    else if (params?.on_sale === "false") queryFragments.push(`-is_price_reduced:true`);
+    if (params?.stock_status === "instock")
+      queryFragments.push(`available_for_sale:true`);
+    else if (params?.stock_status === "outofstock")
+      queryFragments.push(`-available_for_sale:true`);
+    if (params?.on_sale === "true")
+      queryFragments.push(`is_price_reduced:true`);
+    else if (params?.on_sale === "false")
+      queryFragments.push(`-is_price_reduced:true`);
     if (params?.category) {
-      const tags = params.category.split(",").map(tag => `tag:"${tag.trim()}"`);
+      const tags = params.category
+        .split(",")
+        .map((tag) => `tag:"${tag.trim()}"`);
       if (tags.length > 0) {
         queryFragments.push(`(${tags.join(" OR ")})`);
       }
     }
-    
-    const query = queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
+
+    let sortKey = "RELEVANCE";
+    let reverse = false;
+
+    if (params?.orderby === "price_asc") {
+      sortKey = "PRICE";
+      reverse = false;
+    } else if (params?.orderby === "price_desc") {
+      sortKey = "PRICE";
+      reverse = true; // High to Low
+    } else if (params?.orderby === "date_desc") {
+      sortKey = "CREATED_AT";
+      reverse = true; // Newest first
+    }
+
+    const query =
+      queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
 
     const { body } = await shopifyFetch<any>({
       query: getProductsQuery,
-      variables: { first, query },
+      variables: { first: firstShopify, query, after, sortKey, reverse },
     });
 
     if (!body.data?.products?.edges) {
-      return { products: [], totalPages: 1, totalItems: 0 };
+      return { products: [], hasNextPage: false, endCursor: null };
     }
 
     const edges = body.data.products.edges;
-    
-    // Slice to the correct page
-    const startIndex = (page - 1) * perPage;
-    const pageEdges = edges.slice(startIndex, startIndex + perPage);
 
-    const products = pageEdges.map(({ node: p }: any) => {
+    const products = edges.map(({ node: p }: any) => {
       return {
         id: p.id,
         handle: p.handle,
@@ -273,52 +296,53 @@ export async function fetchShopifyProducts(
           maxVariantPrice: { amount: "0", currencyCode: "AUD" },
         },
         compareAtPriceRange: p.compareAtPriceRange || undefined,
-        options: p.options?.map((opt: any) => ({
-          name: opt.name,
-          values: opt.values,
-        })) || [],
-        variants: p.variants?.edges?.map(({ node: v }: any) => ({
-          id: v.id,
-          title: v.title,
-          sku: v.sku || null,
-          availableForSale: v.availableForSale,
-          quantityAvailable: v.quantityAvailable ?? 0,
-          price: v.price,
-          compareAtPrice: v.compareAtPrice,
-          image: v.image || null,
-          weight: v.weight || null,
-          weightUnit: v.weightUnit || null,
-          selectedOptions: v.selectedOptions || [],
-        })) || [],
-        images: p.images?.edges?.map(({ node: img }: any) => ({
-          id: img.id,
-          url: img.url,
-          altText: img.altText || null,
-        })) || [],
-        collections: p.collections?.edges?.map(({ node: c }: any) => ({
-          id: c.id,
-          title: c.title,
-          handle: c.handle,
-        })) || [],
+        options:
+          p.options?.map((opt: any) => ({
+            name: opt.name,
+            values: opt.values,
+          })) || [],
+        variants:
+          p.variants?.edges?.map(({ node: v }: any) => ({
+            id: v.id,
+            title: v.title,
+            sku: v.sku || null,
+            availableForSale: v.availableForSale,
+            quantityAvailable: v.quantityAvailable ?? 0,
+            price: v.price,
+            compareAtPrice: v.compareAtPrice,
+            image: v.image || null,
+            weight: v.weight || null,
+            weightUnit: v.weightUnit || null,
+            selectedOptions: v.selectedOptions || [],
+          })) || [],
+        images:
+          p.images?.edges?.map(({ node: img }: any) => ({
+            id: img.id,
+            url: img.url,
+            altText: img.altText || null,
+          })) || [],
+        collections:
+          p.collections?.edges?.map(({ node: c }: any) => ({
+            id: c.id,
+            title: c.title,
+            handle: c.handle,
+          })) || [],
       } as ShopifyProduct;
     });
 
-    // Determine total pages. Since we do simplistic pagination, if hasNextPage is true, we guess there is at least one more page.
     const hasNextPage = body.data.products.pageInfo.hasNextPage;
-    const totalPages = hasNextPage ? page + 1 : Math.ceil(edges.length / perPage) || 1;
+    const endCursor = body.data.products.pageInfo.endCursor || null;
 
     return {
       products,
-      totalPages,
-      totalItems: edges.length, // Not accurate for total store products, but reflects current fetched batch
+      hasNextPage,
+      endCursor,
     };
   } catch (error) {
     console.error("Error fetching Shopify Products:", error);
-    return { products: [], totalPages: 1, totalItems: 0 };
+    return { products: [], hasNextPage: false, endCursor: null };
   }
 }
-
-
 
 const getCollectionsQuery = `
   query getCollections {
@@ -367,20 +391,22 @@ export async function fetchShopifyCategories() {
           const fields = refEdge.node.fields;
           const labelField = fields.find((f: any) => f.key === "label")?.value;
           const tagsFieldRaw = fields.find((f: any) => f.key === "tags")?.value;
-          
+
           let parsedTags: string[] = [];
           try {
             parsedTags = JSON.parse(tagsFieldRaw || "[]");
           } catch (e) {
             // fallback if it's not valid json string array
-            parsedTags = tagsFieldRaw ? tagsFieldRaw.split(",").map((t: string) => t.trim()) : [];
+            parsedTags = tagsFieldRaw
+              ? tagsFieldRaw.split(",").map((t: string) => t.trim())
+              : [];
           }
 
           return {
             id: refEdge.node.id, // Metaobject ID
             title: labelField,
             // The frontend expands category group IDs into tags using items array
-            items: parsedTags.map(tag => ({ id: tag, name: tag })),
+            items: parsedTags.map((tag) => ({ id: tag, name: tag })),
           };
         });
       }
@@ -389,19 +415,20 @@ export async function fetchShopifyCategories() {
         category: node.title,
         title: node.title,
         slug: node.handle,
-        filters: filters
+        filters: filters,
       };
     });
 
     // Return the mapped collections as top-level categories, excluding Shopify system defaults
     const excludedTitles = ["home page", "automated collection", "hydrogen"];
-    return categories.filter((c: any) => !excludedTitles.includes(c.title.toLowerCase()));
+    return categories.filter(
+      (c: any) => !excludedTitles.includes(c.title.toLowerCase()),
+    );
   } catch (error) {
     console.error("Failed to fetch shopify categories", error);
     return [];
   }
 }
-
 
 const getProductsByIdsQuery = `
   query getProductsByIds($ids: [ID!]!) {
@@ -460,7 +487,9 @@ const getProductsByIdsQuery = `
   }
 `;
 
-export async function fetchShopifyProductsByIds(ids: string[]): Promise<ShopifyProduct[]> {
+export async function fetchShopifyProductsByIds(
+  ids: string[],
+): Promise<ShopifyProduct[]> {
   try {
     const { body } = await shopifyFetch<any>({
       query: getProductsByIdsQuery,
@@ -486,33 +515,37 @@ export async function fetchShopifyProductsByIds(ids: string[]): Promise<ShopifyP
         maxVariantPrice: { amount: "0", currencyCode: "AUD" },
       },
       compareAtPriceRange: p.compareAtPriceRange || undefined,
-      options: p.options?.map((opt: any) => ({
-        name: opt.name,
-        values: opt.values,
-      })) || [],
-      variants: p.variants?.edges?.map(({ node: v }: any) => ({
-        id: v.id,
-        title: v.title,
-        sku: v.sku || null,
-        availableForSale: v.availableForSale,
-        quantityAvailable: v.quantityAvailable ?? 0,
-        price: v.price,
-        compareAtPrice: v.compareAtPrice,
-        image: v.image || null,
-        weight: v.weight || null,
-        weightUnit: v.weightUnit || null,
-        selectedOptions: v.selectedOptions || [],
-      })) || [],
-      images: p.images?.edges?.map(({ node: img }: any) => ({
-        id: img.id,
-        url: img.url,
-        altText: img.altText || null,
-      })) || [],
-      collections: p.collections?.edges?.map(({ node: c }: any) => ({
-        id: c.id,
-        title: c.title,
-        handle: c.handle,
-      })) || [],
+      options:
+        p.options?.map((opt: any) => ({
+          name: opt.name,
+          values: opt.values,
+        })) || [],
+      variants:
+        p.variants?.edges?.map(({ node: v }: any) => ({
+          id: v.id,
+          title: v.title,
+          sku: v.sku || null,
+          availableForSale: v.availableForSale,
+          quantityAvailable: v.quantityAvailable ?? 0,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          image: v.image || null,
+          weight: v.weight || null,
+          weightUnit: v.weightUnit || null,
+          selectedOptions: v.selectedOptions || [],
+        })) || [],
+      images:
+        p.images?.edges?.map(({ node: img }: any) => ({
+          id: img.id,
+          url: img.url,
+          altText: img.altText || null,
+        })) || [],
+      collections:
+        p.collections?.edges?.map(({ node: c }: any) => ({
+          id: c.id,
+          title: c.title,
+          handle: c.handle,
+        })) || [],
     }));
   } catch (error) {
     console.error("Error fetching Shopify Products by IDs:", error);
@@ -575,7 +608,9 @@ const getRecommendationsQuery = `
   }
 `;
 
-export async function fetchShopifyRecommendations(productId: string): Promise<ShopifyProduct[]> {
+export async function fetchShopifyRecommendations(
+  productId: string,
+): Promise<ShopifyProduct[]> {
   try {
     const { body } = await shopifyFetch<any>({
       query: getRecommendationsQuery,
@@ -601,33 +636,37 @@ export async function fetchShopifyRecommendations(productId: string): Promise<Sh
         maxVariantPrice: { amount: "0", currencyCode: "AUD" },
       },
       compareAtPriceRange: p.compareAtPriceRange || undefined,
-      options: p.options?.map((opt: any) => ({
-        name: opt.name,
-        values: opt.values,
-      })) || [],
-      variants: p.variants?.edges?.map(({ node: v }: any) => ({
-        id: v.id,
-        title: v.title,
-        sku: v.sku || null,
-        availableForSale: v.availableForSale,
-        quantityAvailable: v.quantityAvailable ?? 0,
-        price: v.price,
-        compareAtPrice: v.compareAtPrice,
-        image: v.image || null,
-        weight: v.weight || null,
-        weightUnit: v.weightUnit || null,
-        selectedOptions: v.selectedOptions || [],
-      })) || [],
-      images: p.images?.edges?.map(({ node: img }: any) => ({
-        id: img.id,
-        url: img.url,
-        altText: img.altText || null,
-      })) || [],
-      collections: p.collections?.edges?.map(({ node: c }: any) => ({
-        id: c.id,
-        title: c.title,
-        handle: c.handle,
-      })) || [],
+      options:
+        p.options?.map((opt: any) => ({
+          name: opt.name,
+          values: opt.values,
+        })) || [],
+      variants:
+        p.variants?.edges?.map(({ node: v }: any) => ({
+          id: v.id,
+          title: v.title,
+          sku: v.sku || null,
+          availableForSale: v.availableForSale,
+          quantityAvailable: v.quantityAvailable ?? 0,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          image: v.image || null,
+          weight: v.weight || null,
+          weightUnit: v.weightUnit || null,
+          selectedOptions: v.selectedOptions || [],
+        })) || [],
+      images:
+        p.images?.edges?.map(({ node: img }: any) => ({
+          id: img.id,
+          url: img.url,
+          altText: img.altText || null,
+        })) || [],
+      collections:
+        p.collections?.edges?.map(({ node: c }: any) => ({
+          id: c.id,
+          title: c.title,
+          handle: c.handle,
+        })) || [],
     }));
   } catch (error) {
     console.error("Error fetching Shopify recommendations:", error);
@@ -635,22 +674,29 @@ export async function fetchShopifyRecommendations(productId: string): Promise<Sh
   }
 }
 
-export async function fetchCustomSimilarProducts(product: ShopifyProduct): Promise<ShopifyProduct[]> {
+export async function fetchCustomSimilarProducts(
+  product: ShopifyProduct,
+): Promise<ShopifyProduct[]> {
   try {
     let queryFragments = [];
-    
+
     // 1. Try matching by the first tag
     if (product.tags && product.tags.length > 0) {
       queryFragments.push(`tag:"${product.tags[0]}"`);
-    } 
+    }
     // 2. Fallback to matching by the first collection if no tags exist
-    // Note: To truly filter by collection in the general query, we might need to rely on the collection ID if the backend supports it, 
+    // Note: To truly filter by collection in the general query, we might need to rely on the collection ID if the backend supports it,
     // or just return generic products if all else fails. For this storefront, let's use the productType if no tags exist.
-    else if (product.productType && product.productType !== "simple" && product.productType !== "") {
+    else if (
+      product.productType &&
+      product.productType !== "simple" &&
+      product.productType !== ""
+    ) {
       queryFragments.push(`product_type:"${product.productType}"`);
     }
 
-    const query = queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
+    const query =
+      queryFragments.length > 0 ? queryFragments.join(" AND ") : null;
 
     // We fetch a few extra in case the current product is in the results
     const res = await shopifyFetch<any>({
@@ -677,38 +723,43 @@ export async function fetchCustomSimilarProducts(product: ShopifyProduct): Promi
         maxVariantPrice: { amount: "0", currencyCode: "AUD" },
       },
       compareAtPriceRange: node.compareAtPriceRange || undefined,
-      options: node.options?.map((opt: any) => ({
-        name: opt.name,
-        values: opt.values,
-      })) || [],
-      variants: node.variants?.edges?.map(({ node: v }: any) => ({
-        id: v.id,
-        title: v.title,
-        sku: v.sku || null,
-        availableForSale: v.availableForSale,
-        quantityAvailable: v.quantityAvailable ?? 0,
-        price: v.price,
-        compareAtPrice: v.compareAtPrice,
-        image: v.image || null,
-        weight: v.weight || null,
-        weightUnit: v.weightUnit || null,
-        selectedOptions: v.selectedOptions || [],
-      })) || [],
-      images: node.images?.edges?.map(({ node: img }: any) => ({
-        id: img.id,
-        url: img.url,
-        altText: img.altText || null,
-      })) || [],
-      collections: node.collections?.edges?.map(({ node: c }: any) => ({
-        id: c.id,
-        title: c.title,
-        handle: c.handle,
-      })) || [],
+      options:
+        node.options?.map((opt: any) => ({
+          name: opt.name,
+          values: opt.values,
+        })) || [],
+      variants:
+        node.variants?.edges?.map(({ node: v }: any) => ({
+          id: v.id,
+          title: v.title,
+          sku: v.sku || null,
+          availableForSale: v.availableForSale,
+          quantityAvailable: v.quantityAvailable ?? 0,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          image: v.image || null,
+          weight: v.weight || null,
+          weightUnit: v.weightUnit || null,
+          selectedOptions: v.selectedOptions || [],
+        })) || [],
+      images:
+        node.images?.edges?.map(({ node: img }: any) => ({
+          id: img.id,
+          url: img.url,
+          altText: img.altText || null,
+        })) || [],
+      collections:
+        node.collections?.edges?.map(({ node: c }: any) => ({
+          id: c.id,
+          title: c.title,
+          handle: c.handle,
+        })) || [],
     }));
 
     // Filter out the current product and return exactly 4 related products
-    return products.filter((p: ShopifyProduct) => p.id !== product.id).slice(0, 4);
-    
+    return products
+      .filter((p: ShopifyProduct) => p.id !== product.id)
+      .slice(0, 4);
   } catch (error) {
     console.error("Error fetching custom similar products:", error);
     return [];

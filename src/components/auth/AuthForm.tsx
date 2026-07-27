@@ -98,7 +98,7 @@ const AuthForm: React.FC<Prop> = ({ mode = "login" }) => {
         toast.success("Login Successful!");
 
         const token = result.token;
-        setUser(result, token);
+        setUser(result, token, result.expiresAt);
 
         // Fetch user's cart (or it remains on Shopify's cartId)
         await fetchCart();

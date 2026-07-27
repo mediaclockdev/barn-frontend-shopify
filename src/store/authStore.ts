@@ -25,8 +25,9 @@ type AuthPayload = Partial<AuthUser> & {
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
+  expiresAt: string | null;
   hasHydrated: boolean;
-  setUser: (user: AuthPayload, token: string) => void;
+  setUser: (user: AuthPayload, token: string, expiresAt?: string) => void;
   logout: () => void;
   setHasHydrated: (value: boolean) => void;
 }
@@ -50,15 +51,19 @@ const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
+      token: null, 
+      expiresAt: null,
       hasHydrated: false,
-      setUser: (user, token) => set({ user: normalizeAuthUser(user), token }),
-      logout: () => set({ user: null, token: null }),
+      setUser: (user, token, expiresAt) => set({ user: normalizeAuthUser(user), token, expiresAt: expiresAt || null }),
+      logout: () => set({ user: null, token: null, expiresAt: null }),
       setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
       name: "auth-storage",
       onRehydrateStorage: () => (state) => {
+        if (state?.expiresAt && new Date() > new Date(state.expiresAt)) {
+          state.logout();
+        }
         state?.setHasHydrated(true);
       },
     },

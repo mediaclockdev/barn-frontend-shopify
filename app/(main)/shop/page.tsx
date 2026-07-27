@@ -52,7 +52,6 @@ const page = async ({ searchParams }: Props) => {
   apiParams.on_sale = "false";
 
   let products = [];
-  let totalPages = 1;
   let categories = [];
 
   const catRes = await fetchShopifyCategories().catch((err) => {
@@ -86,11 +85,12 @@ const page = async ({ searchParams }: Props) => {
 
   const res = await fetchShopifyProducts(apiParams).catch((err) => {
     console.error("Failed to fetch custom products:", err);
-    return { products: [], totalPages: 1, totalItems: 0 };
+    return { products: [], hasNextPage: false, endCursor: null };
   });
 
   products = res.products || [];
-  totalPages = res.totalPages || 1;
+  const hasNextPage = res.hasNextPage || false;
+  const endCursor = res.endCursor || null;
 
   // Fetch header text from CMS
   const shopDealsApiRes: any = await getShopDealsPageData();
@@ -100,9 +100,9 @@ const page = async ({ searchParams }: Props) => {
     <>
       <Suspense fallback={<Loading />}>
         <ShopLayout
-          products={products}
-          currentPage={currentPage}
-          totalPages={totalPages}
+          initialProducts={products}
+          initialCursor={endCursor}
+          initialHasNextPage={hasNextPage}
           categories={categories}
           title={pageData.shop_title}
           highlight={pageData.shop_highlight}

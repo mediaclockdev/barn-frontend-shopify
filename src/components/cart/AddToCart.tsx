@@ -219,7 +219,11 @@ const AddToCart = () => {
           <div className="bg-gray-50/50 rounded-3xl mt-4 pt-4">
             <div className="max-w-6xl mx-auto w-full">
               <h4 className="text-3xl font-bold w-full text-center mb-4 lg:mb-6">
-                You May <span className="text-primary">Also Like</span>
+                {hydratedCart.length === 0 ? (
+                  <>Trending <span className="text-primary">Right Now</span></>
+                ) : (
+                  <>Frequently <span className="text-primary">Bought Together</span></>
+                )}
               </h4>
               <div className="block md:hidden relative">
                 <Swiper

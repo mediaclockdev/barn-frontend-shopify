@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import TextHeader from "@/src/helper/TextHeader";
 import ProductCard from "../cards/ProductCard";
+import Button from "../ui/Button";
 import SortBy from "../filters/SortBy";
 import CategoryFilter from "../filters/CategoryFilter";
 import Filters from "../filters/Filters";
@@ -14,8 +15,13 @@ import { ShopifyProduct } from "@/src/utils/shopify-types";
 import { useProductStore } from "@/src/store/productStore";
 import Pagination from "../misc/Pagination";
 import { SHOP_DEALS_FALLBACK } from "@/src/utils/shop-deals-fallback";
+import { loadMoreProducts } from "@/app/(main)/shop/actions";
+import { useSearchParams } from "next/navigation";
 
 interface ShopLayoutProps {
+  initialProducts: any[];
+  initialCursor: string | null;
+  initialHasNextPage: boolean;
   products?: ShopifyProduct[];
   currentPage?: number;
   totalPages?: number;
@@ -25,6 +31,9 @@ interface ShopLayoutProps {
 }
 
 const ShopLayout = ({
+  initialProducts,
+  initialCursor,
+  initialHasNextPage,
   products,
   currentPage = 1,
   totalPages = 1,
@@ -33,6 +42,44 @@ const ShopLayout = ({
   highlight = SHOP_DEALS_FALLBACK.shop_highlight,
 }: ShopLayoutProps) => {
   const [openFilters, setOpenFilters] = useState(false);
+  const [productsList, setProductsList] = useState(initialProducts);
+  const [cursor, setCursor] = useState(initialCursor);
+  const [hasMore, setHasMore] = useState(initialHasNextPage);
+  const [loading, setLoading] = useState(false);
+  
+  const searchParams = useSearchParams();
+
+  // Reset state if URL changes (e.g. category filter changes)
+  useEffect(() => {
+    setProductsList(initialProducts);
+    setCursor(initialCursor);
+    setHasMore(initialHasNextPage);
+  }, [initialProducts, initialCursor, initialHasNextPage]);
+
+  const handleLoadMore = async () => {
+    if (!cursor || loading) return;
+    setLoading(true);
+
+    try {
+      // Build current filters from URL
+      const params: Record<string, string> = {};
+      searchParams.forEach((val, key) => {
+        params[key] = val;
+      });
+      // Add cursor
+      params.cursor = cursor;
+
+      const res = await loadMoreProducts(params);
+      
+      setProductsList((prev) => [...prev, ...res.products]);
+      setCursor(res.endCursor);
+      setHasMore(res.hasNextPage);
+    } catch (error) {
+      console.error("Failed to load more products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Ensure shop page scrolls to top on load, in case of Next.js router restoring scroll dynamically midway
   useEffect(() => {
@@ -89,8 +136,8 @@ const ShopLayout = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-              {products && products.length > 0 ? (
-                products.map((item) => (
+              {productsList && productsList.length > 0 ? (
+                productsList.map((item) => (
                   <div
                     key={item.id}
                     onClick={() =>
@@ -140,8 +187,14 @@ const ShopLayout = ({
             </div>
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <Pagination currentPage={currentPage} totalPages={totalPages} />
+            {hasMore && (
+              <div className="flex justify-center mt-12 mb-8">
+                <Button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  text={loading ? "Loading..." : "Load More Products"}
+                />
+              </div>
             )}
           </div>
         </div>

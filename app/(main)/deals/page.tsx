@@ -47,7 +47,7 @@ export default async function DealsPage({ searchParams }: Props) {
 
   const res = await fetchShopifyProducts(apiParams).catch((err) => {
     console.error("Failed to fetch sale products:", err);
-    return { products: [], totalPages: 1, totalItems: 0 };
+    return { products: [], hasNextPage: false, endCursor: null };
   });
 
   // Fetch header text from CMS
@@ -58,9 +58,9 @@ export default async function DealsPage({ searchParams }: Props) {
     <div>
       <Suspense fallback={<Loading />}>
         <DealsLayout
-          products={res.products}
-          currentPage={currentPage}
-          totalPages={res.totalPages}
+          initialProducts={res.products}
+          initialCursor={res.endCursor}
+          initialHasNextPage={res.hasNextPage}
           title={pageData.deals_title}
           highlight={pageData.deals_highlight}
         />

@@ -15,7 +15,17 @@ export async function POST(req: Request) {
 
         let shopifyCart;
         if (cartId) {
-            shopifyCart = await addLinesToCart(cartId, variantId, Number(quantity));
+            try {
+                shopifyCart = await addLinesToCart(cartId, variantId, Number(quantity));
+            } catch (err: any) {
+                // If the cart expired or was deleted on Shopify's end, recover by creating a new one
+                if (err.message && err.message.includes("cart does not exist")) {
+                    console.log("Cart expired, creating a new one...");
+                    shopifyCart = await createShopifyCart(variantId, Number(quantity));
+                } else {
+                    throw err;
+                }
+            }
         } else {
             shopifyCart = await createShopifyCart(variantId, Number(quantity));
         }

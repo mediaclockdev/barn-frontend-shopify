@@ -41,7 +41,7 @@ const page = async ({ params }: Props) => {
   const { slug } = await params;
   const product = await getProduct(slug);
   
-  let recommendations = [];
+  let recommendations: any[] = [];
   if (product) {
     recommendations = await fetchCustomSimilarProducts(product).catch(() => []);
   }

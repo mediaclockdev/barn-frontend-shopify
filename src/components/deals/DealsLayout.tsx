@@ -2,6 +2,7 @@
 
 import TextHeader from "@/src/helper/TextHeader";
 import ProductCard from "../cards/ProductCard";
+import Button from "../ui/Button";
 import Filters from "../filters/Filters";
 import SortBy from "../filters/SortBy";
 import BreadCrumb from "../misc/BreadCrumb";
@@ -13,24 +14,65 @@ import { useProductStore } from "@/src/store/productStore";
 import Pagination from "../misc/Pagination";
 import { ShopifyProduct } from "@/src/utils/shopify-types";
 import { SHOP_DEALS_FALLBACK } from "@/src/utils/shop-deals-fallback";
+import { loadMoreProducts } from "@/app/(main)/shop/actions";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 interface DealsLayoutProps {
-  products?: ShopifyProduct[];
-  currentPage?: number;
-  totalPages?: number;
+  initialProducts: any[];
+  initialCursor: string | null;
+  initialHasNextPage: boolean;
   title?: string;
   highlight?: string;
 }
 
 const DealsLayout = ({
-  products = [],
-  currentPage = 1,
-  totalPages = 1,
+  initialProducts,
+  initialCursor,
+  initialHasNextPage,
   title = SHOP_DEALS_FALLBACK.deals_title,
   highlight = SHOP_DEALS_FALLBACK.deals_highlight,
 }: DealsLayoutProps) => {
   const [openFilters, setOpenFilters] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
+  const [productsList, setProductsList] = useState(initialProducts);
+  const [cursor, setCursor] = useState(initialCursor);
+  const [hasMore, setHasMore] = useState(initialHasNextPage);
+  const [loading, setLoading] = useState(false);
+  
+  const searchParams = useSearchParams();
+
+  // Reset state if URL changes
+  useEffect(() => {
+    setProductsList(initialProducts);
+    setCursor(initialCursor);
+    setHasMore(initialHasNextPage);
+  }, [initialProducts, initialCursor, initialHasNextPage]);
+
+  const handleLoadMore = async () => {
+    if (!cursor || loading) return;
+    setLoading(true);
+
+    try {
+      const params: Record<string, string> = {};
+      searchParams.forEach((val, key) => {
+        params[key] = val;
+      });
+      params.cursor = cursor;
+      // Force deals page rule just in case
+      params.on_sale = "true";
+
+      const res = await loadMoreProducts(params);
+      
+      setProductsList((prev) => [...prev, ...res.products]);
+      setCursor(res.endCursor);
+      setHasMore(res.hasNextPage);
+    } catch (error) {
+      console.error("Failed to load more products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section className="section pt-2! overflow-visible!">
@@ -77,8 +119,8 @@ const DealsLayout = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-              {products && products.length > 0 ? (
-                products.map((item) => (
+              {productsList && productsList.length > 0 ? (
+                productsList.map((item) => (
                   <div
                     key={item.id}
                     onClick={
@@ -131,9 +173,15 @@ const DealsLayout = ({
                 </div>
               )}
             </div>
-
-            {totalPages > 1 && (
-              <Pagination currentPage={currentPage} totalPages={totalPages} />
+            {/* Pagination Controls */}
+            {hasMore && (
+              <div className="flex justify-center mt-12 mb-8">
+                <Button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  text={loading ? "Loading..." : "Load More Products"}
+                />
+              </div>
             )}
           </div>
         </div>

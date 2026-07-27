@@ -28,6 +28,7 @@ export async function loginUser(credentials: {
     return {
       success: true,
       token: token.accessToken,
+      expiresAt: token.expiresAt,
       id: customer.id,
       email: customer.email,
       first_name: customer.firstName || "",
