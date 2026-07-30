@@ -60,28 +60,7 @@ const page = async ({ searchParams }: Props) => {
   });
   categories = catRes || [];
 
-  // Expand category group IDs into actual tags for the backend (if applicable)
-  // For Shopify, if we filter by collections, we'd adjust this logic. 
-  // Let's keep it harmless if we aren't heavily using it right now.
-  if (apiParams.category) {
-    const selectedValues = apiParams.category.split(",");
-    const expandedTags = new Set<string>();
-
-    selectedValues.forEach((val) => {
-      let wasExpanded = false;
-      categories.forEach((cat: any) => {
-        cat.filters?.forEach((fg: any) => {
-          if (fg.id === val) {
-            fg.items?.forEach((item: any) => expandedTags.add(item.id));
-            wasExpanded = true;
-          }
-        });
-      });
-      if (!wasExpanded) expandedTags.add(val);
-    });
-
-    apiParams.category = Array.from(expandedTags).join(",");
-  }
+  // Category expansion (Metaobject -> Tag) is now handled globally inside fetchShopifyProducts!
 
   const res = await fetchShopifyProducts(apiParams).catch((err) => {
     console.error("Failed to fetch custom products:", err);

@@ -244,9 +244,31 @@ export async function fetchShopifyProducts(
     else if (params?.on_sale === "false")
       queryFragments.push(`-is_price_reduced:true`);
     if (params?.category) {
-      const tags = params.category
-        .split(",")
-        .map((tag) => `tag:"${tag.trim()}"`);
+      // Fetch categories to translate Metaobject GIDs into actual product tags
+      const categoriesRes = await fetchShopifyCategories().catch(() => []);
+      const categories = categoriesRes || [];
+      
+      const selectedValues = params.category.split(",");
+      const expandedTags = new Set<string>();
+
+      // Translate the selected category IDs (Metaobjects) into the raw tags
+      selectedValues.forEach((val) => {
+        let wasExpanded = false;
+        categories.forEach((cat: any) => {
+          cat.filters?.forEach((fg: any) => {
+            if (fg.id === val) {
+              fg.items?.forEach((item: any) => expandedTags.add(item.id));
+              wasExpanded = true;
+            }
+          });
+        });
+        
+        // If it wasn't a Metaobject ID in the category map, keep the original raw value
+        if (!wasExpanded) expandedTags.add(val);
+      });
+
+      // Construct the tag search string for Shopify GraphQL
+      const tags = Array.from(expandedTags).map((tag) => `tag:"${tag.trim()}"`);
       if (tags.length > 0) {
         queryFragments.push(`(${tags.join(" OR ")})`);
       }

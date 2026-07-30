@@ -64,7 +64,11 @@ const DealsLayout = ({
 
       const res = await loadMoreProducts(params);
       
-      setProductsList((prev) => [...prev, ...res.products]);
+      setProductsList((prev) => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newProducts = res.products.filter(p => !existingIds.has(p.id));
+        return [...prev, ...newProducts];
+      });
       setCursor(res.endCursor);
       setHasMore(res.hasNextPage);
     } catch (error) {
