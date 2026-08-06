@@ -374,7 +374,10 @@ const getCollectionsQuery = `
           id
           handle
           title
-          metafield(namespace: "custom", key: "sidebar_filters") {
+          show_on_website: metafield(namespace: "custom", key: "show_on_website") {
+            value
+          }
+          sidebar_filters: metafield(namespace: "custom", key: "sidebar_filters") {
             value
             references(first: 50) {
               edges {
@@ -406,10 +409,15 @@ export async function fetchShopifyCategories() {
       return [];
     }
 
-    const categories = body.data.collections.edges.map(({ node }: any) => {
-      let filters = [];
-      if (node.metafield?.references?.edges) {
-        filters = node.metafield.references.edges.map((refEdge: any) => {
+    const categories = body.data.collections.edges
+      .filter(({ node }: any) => {
+        console.log(`Collection: ${node.title}, show_on_website:`, node.show_on_website?.value);
+        return node.show_on_website?.value !== "false";
+      })
+      .map(({ node }: any) => {
+        let filters = [];
+        if (node.sidebar_filters?.references?.edges) {
+          filters = node.sidebar_filters.references.edges.map((refEdge: any) => {
           const fields = refEdge.node.fields;
           const labelField = fields.find((f: any) => f.key === "label")?.value;
           const tagsFieldRaw = fields.find((f: any) => f.key === "tags")?.value;
