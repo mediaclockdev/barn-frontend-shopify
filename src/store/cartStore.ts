@@ -244,16 +244,17 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: async () => {
-        const { cartId } = get();
-        if (!cartId) return;
-        const previousItems = [...get().items];
-        set({ items: [], cartId: null, checkoutUrl: null, couponCode: null, couponDiscount: 0 });
-        try {
-          await clearCartAPI(cartId);
-        } catch (error) {
-          console.error("Failed to clear cart:", error);
-          set({ items: previousItems });
-        }
+        // Completely destroy the local cart session instead of just emptying the lines.
+        // This ensures the next user gets a brand new cart ID without the previous user's identity attached.
+        set({ 
+          items: [], 
+          cartId: null, 
+          checkoutUrl: null, 
+          couponCode: null, 
+          couponDiscount: 0,
+          deliveryMethod: "",
+          shippingCost: null 
+        });
       },
 
       applyCoupon: async (code: string, cartTotal: number) => {
@@ -273,6 +274,11 @@ export const useCartStore = create<CartState>()(
       name: "cart-storage",
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+        // Automatically sync with Shopify when returning to the site
+        // This clears out stale completed carts after they checkout.
+        if (state?.cartId) {
+          state.fetchCart();
+        }
       },
     },
   ),
