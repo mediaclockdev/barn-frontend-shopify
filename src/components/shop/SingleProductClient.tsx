@@ -31,14 +31,9 @@ const SingleProductClient = ({
     );
   }
 
-  let rawDescription = (product.descriptionHtml || product.description || "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "") // Remove embedded style tags
-    .replace(/(?:\.[a-zA-Z0-9_-]+\s*\{[^}]*\}\s*)+/g, "") // Remove stray MS Word CSS text
-    .replace(/\s+/g, " ")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br/><br/>") // Only reduce 3+ to 2
-    .replace(/<p[^>]*>\s*(?:<br\s*\/?>|&nbsp;|\s)*\s*<\/p>/gi, "")
-    .trim();
+  // The client requested to keep their proper HTML intact.
+  // We will pass the descriptionHtml directly without heavily modifying it.
+  let rawDescription = product.descriptionHtml || product.description || "";
 
   const isVariable =
     product.variants?.length > 1 ||

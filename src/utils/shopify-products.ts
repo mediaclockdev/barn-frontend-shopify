@@ -91,6 +91,12 @@ export async function fetchShopifyProduct(
 
     const p = body.data.product;
 
+    // Log the raw product descriptions as requested
+    console.log(`\n--- Description for product: ${p.title} ---`);
+    console.log("RAW DESCRIPTION:", p.description);
+    console.log("HTML DESCRIPTION:", p.descriptionHtml);
+    console.log("-------------------------------------------\n");
+
     const mappedProduct: ShopifyProduct = {
       id: p.id,
       handle: p.handle,
@@ -303,6 +309,12 @@ export async function fetchShopifyProducts(
     const edges = body.data.products.edges;
 
     const products = edges.map(({ node: p }: any) => {
+      // Log descriptions for each product in the list
+      console.log(`\n--- Description for product: ${p.title} ---`);
+      console.log("RAW DESCRIPTION:", p.description);
+      console.log("HTML DESCRIPTION:", p.descriptionHtml);
+      console.log("-------------------------------------------\n");
+
       return {
         id: p.id,
         handle: p.handle,
@@ -378,14 +390,15 @@ const getCollectionsQuery = `
             value
           }
           sidebar_filters: metafield(namespace: "custom", key: "sidebar_filters") {
-            value
             references(first: 50) {
               edges {
                 node {
                   ... on Metaobject {
                     id
-                    fields {
-                      key
+                    label: field(key: "label") {
+                      value
+                    }
+                    tags: field(key: "tags") {
                       value
                     }
                   }
@@ -411,48 +424,54 @@ export async function fetchShopifyCategories() {
 
     const categories = body.data.collections.edges
       .filter(({ node }: any) => {
-        console.log(`Collection: ${node.title}, show_on_website:`, node.show_on_website?.value);
         return node.show_on_website?.value !== "false";
       })
       .map(({ node }: any) => {
-        let filters = [];
-        if (node.sidebar_filters?.references?.edges) {
-          filters = node.sidebar_filters.references.edges.map((refEdge: any) => {
-          const fields = refEdge.node.fields;
-          const labelField = fields.find((f: any) => f.key === "label")?.value;
-          const tagsFieldRaw = fields.find((f: any) => f.key === "tags")?.value;
+        const filters =
+          node.sidebar_filters?.references?.edges?.map((refEdge: any) => {
+            const metaobject = refEdge.node;
+            const label = metaobject.label?.value || "";
+            
+            // Revert back to using the 'tags' field
+            const tagsFieldRaw = metaobject.tags?.value;
+            let parsedTags: string[] = [];
+            
+            try {
+              parsedTags = JSON.parse(tagsFieldRaw || "[]");
+            } catch (e) {
+              parsedTags = tagsFieldRaw
+                ? tagsFieldRaw.split(",").map((t: string) => t.trim())
+                : [];
+            }
 
-          let parsedTags: string[] = [];
-          try {
-            parsedTags = JSON.parse(tagsFieldRaw || "[]");
-          } catch (e) {
-            // fallback if it's not valid json string array
-            parsedTags = tagsFieldRaw
-              ? tagsFieldRaw.split(",").map((t: string) => t.trim())
-              : [];
-          }
+            return {
+              id: metaobject.id,
+              title: label,
+              items: parsedTags.map((tag: string) => ({
+                id: tag,
+                name: tag,
+              })),
+            };
+          }) || [];
 
-          return {
-            id: refEdge.node.id, // Metaobject ID
-            title: labelField,
-            // The frontend expands category group IDs into tags using items array
-            items: parsedTags.map((tag) => ({ id: tag, name: tag })),
-          };
-        });
-      }
 
-      return {
-        category: node.title,
-        title: node.title,
-        slug: node.handle,
-        filters: filters,
-      };
-    });
+        return {
+          category: node.title,
+          title: node.title,
+          slug: node.handle,
+          filters,
+        };
+      });
 
-    // Return the mapped collections as top-level categories, excluding Shopify system defaults
-    const excludedTitles = ["home page", "automated collection", "hydrogen"];
+    const excludedTitles = [
+      "home page",
+      "automated collection",
+      "hydrogen",
+    ];
+
     return categories.filter(
-      (c: any) => !excludedTitles.includes(c.title.toLowerCase()),
+      (c: any) =>
+        !excludedTitles.includes(c.title.toLowerCase())
     );
   } catch (error) {
     console.error("Failed to fetch shopify categories", error);

@@ -703,7 +703,7 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
 
         {/* Product Description */}
         <div className="max-w-6xl mx-auto border-t border-gray-200 py-4">
-          <h4 className="text-4xl font-bold mb-6 text-gray-900">
+          <h4 className="text-4xl font-bold mb-4 text-gray-900">
             Product <span className="text-primary">Description</span>
           </h4>
 
