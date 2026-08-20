@@ -91,10 +91,9 @@ export async function fetchShopifyProduct(
 
     const p = body.data.product;
 
-    // Log the raw product descriptions as requested
-    console.log(`\n--- Description for product: ${p.title} ---`);
-    console.log("RAW DESCRIPTION:", p.description);
-    console.log("HTML DESCRIPTION:", p.descriptionHtml);
+    // Log the variants to see if there is any variant-specific metadata/description
+    console.log(`\n--- VARIANTS FOR: ${p.title} ---`);
+    console.log(JSON.stringify(p.variants, null, 2));
     console.log("-------------------------------------------\n");
 
     const mappedProduct: ShopifyProduct = {
@@ -309,12 +308,6 @@ export async function fetchShopifyProducts(
     const edges = body.data.products.edges;
 
     const products = edges.map(({ node: p }: any) => {
-      // Log descriptions for each product in the list
-      console.log(`\n--- Description for product: ${p.title} ---`);
-      console.log("RAW DESCRIPTION:", p.description);
-      console.log("HTML DESCRIPTION:", p.descriptionHtml);
-      console.log("-------------------------------------------\n");
-
       return {
         id: p.id,
         handle: p.handle,

@@ -11,6 +11,7 @@ import CartMobileItem from "./CartMobileItem";
 import CartDesktopTable from "./CartDesktopTable";
 import CartTotals from "./CartTotals";
 import ProductCard from "../cards/ProductCard";
+import BreadCrumb from "../misc/BreadCrumb";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Navigation } from "swiper/modules";
@@ -134,6 +135,9 @@ const AddToCart = () => {
     return (
       <div className="halfSection pt-2! relative">
         <div className="container">
+          <div className="mb-2">
+            <BreadCrumb />
+          </div>
           <h2 className="text-4xl font-bold mb-6">Cart</h2>
           <div className="animate-pulse flex flex-col lg:flex-row gap-8 items-start">
             {/* Left Column Mock */}
@@ -164,6 +168,9 @@ const AddToCart = () => {
   return (
     <div className="halfSection pt-2! relative">
       <div className="container">
+        <div className="mb-2">
+          <BreadCrumb />
+        </div>
         <h2 className="text-4xl font-bold mb-6">Cart</h2>
 
         {hydratedCart.length === 0 ? (

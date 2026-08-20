@@ -259,10 +259,10 @@ export default function OrdersClient() {
                 return (
                   <div
                     key={order.id}
-                    className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                    className="bg-white rounded-xl sm:rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                   >
                     {/* Order Header */}
-                    <div className="bg-gray-50 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                    <div className="bg-gray-50 px-4 sm:px-6 py-3.5 sm:py-4 border-b-2 border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                       <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-3 sm:gap-4 md:gap-8">
                         <div>
                           <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-bold mb-0.5 sm:mb-1">
@@ -322,7 +322,7 @@ export default function OrdersClient() {
                         {order.items?.map((item) => (
                           <div
                             key={item.name}
-                            className="flex items-center gap-3 sm:gap-4 py-2.5 sm:py-3 border-b border-gray-50 last:border-0 last:pb-0"
+                            className="flex items-center gap-3 sm:gap-4 py-2.5 sm:py-3 border-b border-gray-100 last:border-0 last:pb-0"
                           >
                             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg sm:rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-gray-100 relative">
                               {item.image ? (

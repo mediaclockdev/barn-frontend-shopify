@@ -13,9 +13,12 @@ export async function fetchWcApi<T>(
   options: RequestInit = {},
 ): Promise<WcApiResponse<T>> {
   if (!wcApiUrl || !wcConsumerKey || !wcConsumerSecret) {
-    throw new Error(
-      "WooCommerce API credentials are not set in environment variables.",
-    );
+    console.warn("[API Client] WooCommerce API credentials missing. Bypassing fetch and returning null.");
+    return {
+      data: null as unknown as T,
+      headers: new Headers(),
+      status: 200,
+    };
   }
 
   const credentials = Buffer.from(

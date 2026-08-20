@@ -14,7 +14,7 @@ const BreadCrumb = ({ customLabels }: BreadCrumbProps) => {
   if (segments.length === 0) return null;
 
   return (
-    <div className="mx-auto px-4">
+    <div className="w-full">
       <div className="flex items-center justify-start text-lg text-gray-600 gap-2 w-fit my-2 mt-5">
         <Link
           href="/"
