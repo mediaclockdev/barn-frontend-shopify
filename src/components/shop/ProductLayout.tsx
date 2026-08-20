@@ -74,6 +74,7 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
   const searchParams = useSearchParams();
   const addItem = useCartStore((state) => state.addItem);
   const cartItems = useCartStore((state) => state.items);
+  const isCartLoading = useCartStore((state) => state.isLoading);
 
   const variationId = currentVariation ? currentVariation.id : (variations?.[0]?.id || 0);
   const inCartItem = cartItems.find(
@@ -493,9 +494,11 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
   return (
     <section className="overflow-hidden">
       <div className="container px-4 lg:px-0 mx-auto">
-        <BreadCrumb
-          customLabels={slug ? { [slug]: title.replace(/&amp;/g, "and") } : {}}
-        />
+        <div className="max-w-6xl mx-auto w-full">
+          <BreadCrumb
+            customLabels={slug ? { [slug]: title.replace(/&amp;/g, "and") } : {}}
+          />
+        </div>
 
         {/* Product Card */}
         <div className="grid md:grid-cols-12 gap-8 lg:gap-10 items-start justify-center max-w-6xl mx-auto my-6">
@@ -662,23 +665,25 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
               <div className="flex-1 w-full flex flex-col gap-3 min-w-50">
                 <Button
                   text={
-                    isOutOfStock
-                      ? "Out of Stock"
-                      : noVariationMatch
-                        ? "Unavailable"
-                        : hasReachedMax
-                          ? "Max in Cart"
-                          : "Add to Cart"
+                    isCartLoading 
+                      ? "Adding..."
+                      : isOutOfStock
+                        ? "Out of Stock"
+                        : noVariationMatch
+                          ? "Unavailable"
+                          : hasReachedMax
+                            ? "Max in Cart"
+                            : "Add to Cart"
                   }
                   icon={
-                    isOutOfStock || hasReachedMax || noVariationMatch
+                    isCartLoading || isOutOfStock || hasReachedMax || noVariationMatch
                       ? undefined
                       : FaCartPlus
                   }
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock || hasReachedMax || noVariationMatch}
+                  disabled={isCartLoading || isOutOfStock || hasReachedMax || noVariationMatch}
                   className={`w-full justify-center h-12 text-lg shadow-md ${
-                    isOutOfStock || hasReachedMax || noVariationMatch
+                    isOutOfStock || hasReachedMax || noVariationMatch || isCartLoading
                       ? "bg-gray-400 cursor-not-allowed"
                       : ""
                   }`}
@@ -688,13 +693,15 @@ const ProductLayout: React.FC<ProductLayoutProps> = ({
 
             <div className="mt-2 w-full">
               <Button
-                text="Buy It Now"
+                text={isCartLoading ? "Processing..." : "Buy It Now"}
                 onClick={handleBuyItNow}
-                disabled={isOutOfStock || hasReachedMax || noVariationMatch}
+                disabled={isCartLoading || isOutOfStock || hasReachedMax || noVariationMatch}
                 className={`w-full justify-center h-12 text-lg shadow-md ${
                   isOutOfStock || hasReachedMax || noVariationMatch
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed hidden"
-                    : "bg-gray-900 hover:bg-gray-800"
+                    : isCartLoading
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : "bg-gray-900 hover:bg-gray-800 text-white"
                 }`}
               />
             </div>
