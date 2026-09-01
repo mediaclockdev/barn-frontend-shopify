@@ -9,8 +9,8 @@ export default function Loading() {
         <BreadCrumb />
 
         <TextHeader
-          text="Hot Deals"
-          highlightedText="For You"
+          text="Today's"
+          highlightedText="Deals"
           btn={false}
           center={true}
           isGrid={false}

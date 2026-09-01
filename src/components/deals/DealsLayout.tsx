@@ -31,7 +31,7 @@ const DealsLayout = ({
   initialCursor,
   initialHasNextPage,
   title = SHOP_DEALS_FALLBACK.deals_title,
-  highlight = SHOP_DEALS_FALLBACK.deals_highlight,
+  highlight = SHOP_DEALS_FALLBACK.deals_highlight_title,
 }: DealsLayoutProps) => {
   const [openFilters, setOpenFilters] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);

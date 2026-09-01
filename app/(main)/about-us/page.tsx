@@ -22,6 +22,7 @@ const page = async () => {
   // Merge: API data wins, fallback fills any gaps
   const data = { ...ABOUT_FALLBACK, ...(res?.data || {}) };
 
+
   return (
     <div>
       <HeroAbout

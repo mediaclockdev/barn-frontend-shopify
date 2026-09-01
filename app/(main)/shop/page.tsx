@@ -14,7 +14,7 @@ export async function generateMetadata() {
   const pageData = { ...SHOP_DEALS_FALLBACK, ...(shopDealsApiRes?.data || {}) };
 
   return constructMetadata({
-    title: `${pageData.shop_title} ${pageData.shop_highlight} | Barn`,
+    title: `${pageData.shop_title} ${pageData.shop_highlight_title} | Barn`,
     description:
       "Browse our premium selection of products for your livestock and companions.",
   });
@@ -84,7 +84,7 @@ const page = async ({ searchParams }: Props) => {
           initialHasNextPage={hasNextPage}
           categories={categories}
           title={pageData.shop_title}
-          highlight={pageData.shop_highlight}
+          highlight={pageData.shop_highlight_title}
         />
       </Suspense>
     </>

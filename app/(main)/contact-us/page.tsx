@@ -8,6 +8,8 @@ export async function generateMetadata() {
   const res = await getContactPageData();
   const data = { ...CONTACT_FALLBACK, ...(res?.data || {}) };
 
+
+
   return constructMetadata({
     title: `${data.hero_title} | Barn`,
     description: data.hero_subtitle,

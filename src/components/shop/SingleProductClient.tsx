@@ -17,11 +17,7 @@ const SingleProductClient = ({
   const product = serverProduct || storeProduct;
 
 
-  if (typeof window !== "undefined" && product) {
-    console.log("=== FULL SHOPIFY PRODUCT DETAILS ===");
-    console.log(product);
-    console.log("===================================");
-  }
+
 
   if (!product) {
     return (

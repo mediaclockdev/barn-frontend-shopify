@@ -9,7 +9,7 @@ export default function Loading() {
         <BreadCrumb />
 
         <TextHeader
-          text="Our"
+          text="Shop"
           highlightedText="Products"
           btn={false}
           center={true}

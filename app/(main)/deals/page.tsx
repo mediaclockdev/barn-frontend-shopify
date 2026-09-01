@@ -11,7 +11,7 @@ export async function generateMetadata() {
   const pageData = { ...SHOP_DEALS_FALLBACK, ...(shopDealsApiRes?.data || {}) };
 
   return constructMetadata({
-    title: `${pageData.deals_title} ${pageData.deals_highlight} | Barn`,
+    title: `${pageData.deals_title} ${pageData.deals_highlight_title} | Barn`,
     description:
       "Discover our hottest deals and discounts on animal feed, pet stock, and farm supplies.",
   });
@@ -62,7 +62,7 @@ export default async function DealsPage({ searchParams }: Props) {
           initialCursor={res.endCursor}
           initialHasNextPage={res.hasNextPage}
           title={pageData.deals_title}
-          highlight={pageData.deals_highlight}
+          highlight={pageData.deals_highlight_title}
         />
       </Suspense>
     </div>

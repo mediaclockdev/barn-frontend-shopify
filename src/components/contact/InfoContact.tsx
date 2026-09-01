@@ -29,7 +29,7 @@ const contactSchema = z.object({
   phone: z
     .string()
     .min(1, "Phone number is required")
-    .regex(/^\d+$/, "Phone number must be numeric"),
+    .regex(/^(?:\+?61|0)[2-478](?:[ -]?[0-9]){8}$/, "Please enter a valid Australian phone number"),
   message: z.string().optional(),
 });
 

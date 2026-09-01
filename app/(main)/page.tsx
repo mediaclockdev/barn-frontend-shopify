@@ -32,8 +32,7 @@ export default async function Page() {
   const content = { ...HOME_FALLBACK, ...(home?.data || {}) };
 
   // ── Blog data ──────────────────────────────────────────
-  // TODO: Fetch blogs from WordPress API natively if needed
-  const blogs = resolveHomepageBlogs([]).slice(0, 3);
+  const blogs = await resolveHomepageBlogs(3);
 
   return (
     <>

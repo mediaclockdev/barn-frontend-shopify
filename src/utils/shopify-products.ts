@@ -92,9 +92,7 @@ export async function fetchShopifyProduct(
     const p = body.data.product;
 
     // Log the variants to see if there is any variant-specific metadata/description
-    console.log(`\n--- VARIANTS FOR: ${p.title} ---`);
-    console.log(JSON.stringify(p.variants, null, 2));
-    console.log("-------------------------------------------\n");
+
 
     const mappedProduct: ShopifyProduct = {
       id: p.id,
